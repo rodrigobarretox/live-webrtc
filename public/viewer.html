@@ -1,43 +1,207 @@
 <!doctype html>
-<html>
+<html lang="pt-BR">
 <head>
 <meta charset="utf-8" />
 <title>Viewer — Live WebRTC</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
-body { font-family: system-ui, Arial; padding: 20px; background:#0b0f14; color:#e6edf3 }
-video { width: 100%; max-width: 900px; background:#000; border-radius:12px }
-.row { display:flex; gap:16px; flex-wrap:wrap; align-items:center }
-input, button { font-size:16px; padding:10px; border-radius:8px; border:1px solid #2a3441; background:#0f172a; color:#e6edf3 }
-button { cursor:pointer }
-.badge { display:inline-block; padding:6px 10px; border-radius:999px; background:#1f2733; font-size:12px; margin-right:8px }
-.warn { color:#ffb86b }
+  :root {
+    --bg: #0b0f14;
+    --card: #111827;
+    --input: #0f172a;
+    --border: #2a3441;
+    --text: #e6edf3;
+    --accent: #00b7ff;
+    --accent-hover: #33c9ff;
+    --muted: #8893a2;
+    --warn: #ffb86b;
+  }
+
+  * {
+    box-sizing: border-box;
+    transition: all 0.2s ease-in-out;
+  }
+
+  body {
+    font-family: "Inter", "Segoe UI", Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  h1 {
+    font-size: 1.8rem;
+    color: var(--accent);
+    margin-bottom: 20px;
+    text-align: center;
+  }
+
+  .controls {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    max-width: 900px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    margin-bottom: 20px;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: #1f2733;
+    font-size: 0.85rem;
+    color: var(--accent);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  #status {
+    background: #162030;
+    color: var(--text);
+  }
+
+  button {
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: none;
+    font-size: 1rem;
+    font-weight: 600;
+    background: var(--accent);
+    color: #0b0f14;
+    cursor: pointer;
+  }
+
+  button:hover:not(:disabled) {
+    background: var(--accent-hover);
+    transform: translateY(-2px);
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  video {
+    width: 100%;
+    max-width: 900px;
+    background: #000;
+    border-radius: 12px;
+    border: 2px solid var(--border);
+    box-shadow: 0 0 20px rgba(0, 183, 255, 0.1);
+  }
+
+  .warn {
+    color: var(--warn);
+    text-align: center;
+    margin-top: 15px;
+    font-size: 0.95rem;
+  }
+
+  @media (max-width: 600px) {
+    .controls {
+      flex-direction: column;
+      padding: 16px;
+    }
+    h1 {
+      font-size: 1.5rem;
+    }
+    button {
+      width: 100%;
+    }
+  }
 </style>
 </head>
 <body>
-<h1>Viewer</h1>
-<div class="row"><span class="badge" id="roomLabel"></span><button id="connectBtn">Conectar</button><span id="status" class="badge">Aguardando transmissor…</span></div>
-<video id="player" autoplay playsinline controls></video>
-<p class="warn">Dica: se não tocar automaticamente no mobile, pressione “play”.</p>
-<script src="/socket.io/socket.io.js"></script>
-<script>
-const qs = new URLSearchParams(location.search);
-const roomId = qs.get('room') || 'demo';
-document.getElementById('roomLabel').textContent = `Room: ${roomId}`;
-const socket = io();
-const player = document.getElementById('player');
-const connectBtn = document.getElementById('connectBtn');
-const statusEl = document.getElementById('status');
-const iceConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
-let broadcasterId = null; let pc = null;
-function setStatus(txt){ statusEl.textContent = txt; }
-function ensurePC(){ if(pc) return pc; pc = new RTCPeerConnection(iceConfig); pc.ontrack=(e)=>player.srcObject=e.streams[0]; pc.onicecandidate=(e)=>{ if(e.candidate&&broadcasterId){ socket.emit("candidate",{to:broadcasterId,candidate:e.candidate}); } }; return pc; }
-async function connectToBroadcaster(){ if(!broadcasterId){ setStatus("Sem transmissor na sala"); return; } const pc=ensurePC(); const offer=await pc.createOffer({offerToReceiveVideo:true,offerToReceiveAudio:true}); await pc.setLocalDescription(offer); socket.emit("offer",{to:broadcasterId,description:pc.localDescription}); setStatus("Conectando ao transmissor…"); connectBtn.disabled=true; }
-socket.on("broadcaster-ready",({broadcasterId:id})=>{broadcasterId=id;setStatus("Transmissor disponível");});
-socket.on("answer",async({from,description})=>{if(from!==broadcasterId)return;await ensurePC().setRemoteDescription(description);setStatus("Conectado! Reproduzindo…");});
-socket.on("candidate",async({from,candidate})=>{if(from!==broadcasterId||!pc)return;try{await pc.addIceCandidate(candidate);}catch{}});
-socket.on("broadcaster-disconnected",()=>{setStatus("Transmissor saiu");if(pc){pc.close();pc=null;}player.srcObject=null;connectBtn.disabled=false;});
-connectBtn.onclick=()=>connectToBroadcaster();
-socket.emit("join",{roomId,role:"viewer"});
-</script>
-</body></html>
+  <h1>🎬 Viewer — Live WebRTC</h1>
+  <div class="controls">
+    <span class="badge" id="roomLabel"></span>
+    <button id="connectBtn">Conectar</button>
+    <span id="status" class="badge">Aguardando transmissor…</span>
+  </div>
+
+  <video id="player" autoplay playsinline controls></video>
+  <p class="warn">Dica: se não tocar automaticamente no mobile, pressione “play”.</p>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const qs = new URLSearchParams(location.search);
+    const roomId = qs.get('room') || 'demo';
+    document.getElementById('roomLabel').textContent = `Room: ${roomId}`;
+    const socket = io();
+    const player = document.getElementById('player');
+    const connectBtn = document.getElementById('connectBtn');
+    const statusEl = document.getElementById('status');
+    const iceConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+    let broadcasterId = null;
+    let pc = null;
+
+    function setStatus(txt) {
+      statusEl.textContent = txt;
+    }
+
+    function ensurePC() {
+      if (pc) return pc;
+      pc = new RTCPeerConnection(iceConfig);
+      pc.ontrack = (e) => player.srcObject = e.streams[0];
+      pc.onicecandidate = (e) => {
+        if (e.candidate && broadcasterId) {
+          socket.emit("candidate", { to: broadcasterId, candidate: e.candidate });
+        }
+      };
+      return pc;
+    }
+
+    async function connectToBroadcaster() {
+      if (!broadcasterId) {
+        setStatus("Sem transmissor na sala");
+        return;
+      }
+      const pc = ensurePC();
+      const offer = await pc.createOffer({ offerToReceiveVideo: true, offerToReceiveAudio: true });
+      await pc.setLocalDescription(offer);
+      socket.emit("offer", { to: broadcasterId, description: pc.localDescription });
+      setStatus("Conectando ao transmissor…");
+      connectBtn.disabled = true;
+    }
+
+    socket.on("broadcaster-ready", ({ broadcasterId: id }) => {
+      broadcasterId = id;
+      setStatus("Transmissor disponível");
+    });
+
+    socket.on("answer", async ({ from, description }) => {
+      if (from !== broadcasterId) return;
+      await ensurePC().setRemoteDescription(description);
+      setStatus("Conectado! Reproduzindo…");
+    });
+
+    socket.on("candidate", async ({ from, candidate }) => {
+      if (from !== broadcasterId || !pc) return;
+      try { await pc.addIceCandidate(candidate); } catch {}
+    });
+
+    socket.on("broadcaster-disconnected", () => {
+      setStatus("Transmissor saiu");
+      if (pc) { pc.close(); pc = null; }
+      player.srcObject = null;
+      connectBtn.disabled = false;
+    });
+
+    connectBtn.onclick = () => connectToBroadcaster();
+    socket.emit("join", { roomId, role: "viewer" });
+  </script>
+</body>
+</html>

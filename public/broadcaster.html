@@ -1,84 +1,225 @@
 <!doctype html>
-<html>
+<html lang="pt-BR">
 <head>
 <meta charset="utf-8" />
 <title>Transmissor — Live WebRTC</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
-body { font-family: system-ui, Arial; padding: 20px; background:#0b0f14; color:#e6edf3 }
-video { width: 100%; max-width: 900px; background:#000; border-radius:12px }
-.row { display:flex; gap:16px; flex-wrap:wrap; align-items:center }
-input, button { font-size:16px; padding:10px; border-radius:8px; border:1px solid #2a3441; background:#0f172a; color:#e6edf3 }
-button { cursor:pointer }
-.badge { display:inline-block; padding:6px 10px; border-radius:999px; background:#1f2733; font-size:12px; margin-right:8px }
+  :root {
+    --bg: #0b0f14;
+    --card: #111827;
+    --input: #0f172a;
+    --border: #2a3441;
+    --text: #e6edf3;
+    --accent: #00b7ff;
+    --accent-hover: #33c9ff;
+    --muted: #8893a2;
+  }
+
+  * {
+    box-sizing: border-box;
+    transition: all 0.2s ease-in-out;
+  }
+
+  body {
+    font-family: "Inter", "Segoe UI", Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  h1 {
+    font-size: 1.8rem;
+    color: var(--accent);
+    margin-bottom: 20px;
+    text-align: center;
+  }
+
+  .controls {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    max-width: 900px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    margin-bottom: 20px;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: #1f2733;
+    font-size: 0.85rem;
+    color: var(--accent);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  button {
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: none;
+    font-size: 1rem;
+    font-weight: 600;
+    background: var(--accent);
+    color: #0b0f14;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+  }
+
+  button:hover:not(:disabled) {
+    background: var(--accent-hover);
+    transform: translateY(-2px);
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  video {
+    width: 100%;
+    max-width: 900px;
+    background: #000;
+    border-radius: 12px;
+    border: 2px solid var(--border);
+    box-shadow: 0 0 20px rgba(0, 183, 255, 0.1);
+  }
+
+  #viewersCount {
+    background: #162030;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  @media (max-width: 600px) {
+    .controls {
+      flex-direction: column;
+      padding: 16px;
+    }
+    h1 {
+      font-size: 1.5rem;
+    }
+    button {
+      width: 100%;
+    }
+  }
 </style>
 </head>
 <body>
-<h1>Transmissor</h1>
-<div class="row">
-  <span class="badge" id="roomLabel"></span>
-  <button id="toggleBtn">Iniciar câmera</button>
-  <button id="muteBtn" disabled>Mutar Áudio</button>
-  <button id="stopBtn" disabled>Parar</button>
-  <span class="badge" id="viewersCount">0 espectadores</span>
-</div>
-<video id="preview" autoplay playsinline muted></video>
-<script src="/socket.io/socket.io.js"></script>
-<script>
-const qs = new URLSearchParams(location.search);
-const roomId = qs.get('room') || 'demo';
-document.getElementById('roomLabel').textContent = `Room: ${roomId}`;
-const socket = io();
-const peers = new Map();
-let localStream = null;
-let started = false;
-let audioMuted = false;
-const iceConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
-const preview = document.getElementById('preview');
-const toggleBtn = document.getElementById('toggleBtn');
-const muteBtn = document.getElementById('muteBtn');
-const stopBtn = document.getElementById('stopBtn');
-const viewersCountEl = document.getElementById('viewersCount');
-function updateViewersCount() {
-  viewersCountEl.textContent = `${peers.size} espectador${peers.size === 1 ? '' : 'es'}`;
-}
-async function startCamera() {
-  if (started) return;
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    preview.srcObject = localStream;
-    started = true;
-    toggleBtn.textContent = "Câmera ativa";
-    toggleBtn.disabled = true;
-    muteBtn.disabled = false;
-    stopBtn.disabled = false;
-    socket.emit("join", { roomId, role: "broadcaster" });
-  } catch (err) { alert("Erro ao acessar câmera/mic: " + err.message); }
-}
-function stopCamera() {
-  if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; started = false; toggleBtn.textContent = "Iniciar câmera"; toggleBtn.disabled = false; muteBtn.disabled = true; stopBtn.disabled = true; }
-  for (const [id, pc] of peers) { pc.close(); }
-  peers.clear(); updateViewersCount();
-}
-toggleBtn.onclick = startCamera; stopBtn.onclick = stopCamera;
-muteBtn.onclick = () => { if (!localStream) return; audioMuted = !audioMuted; localStream.getAudioTracks().forEach(t => (t.enabled = !audioMuted)); muteBtn.textContent = audioMuted ? "Ligar Áudio" : "Mutar Áudio"; };
-socket.on("offer", async ({ from, description }) => {
-  if (!localStream) return;
-  let pc = peers.get(from);
-  if (!pc) {
-    pc = new RTCPeerConnection(iceConfig);
-    peers.set(from, pc); updateViewersCount();
-    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-    pc.onicecandidate = (e) => { if (e.candidate) socket.emit("candidate", { to: from, candidate: e.candidate }); };
-    pc.onconnectionstatechange = () => { if (["failed","disconnected","closed"].includes(pc.connectionState)) { pc.close(); peers.delete(from); updateViewersCount(); } };
-  }
-  await pc.setRemoteDescription(description);
-  const answer = await pc.createAnswer(); await pc.setLocalDescription(answer);
-  socket.emit("answer", { to: from, description: pc.localDescription });
-});
-socket.on("candidate", async ({ from, candidate }) => {
-  const pc = peers.get(from); if (pc && candidate) { try { await pc.addIceCandidate(candidate); } catch {} }
-});
-if (location.protocol === "https:" || location.hostname === "localhost") { startCamera(); }
-</script>
-</body></html>
+  <h1>🎥 Transmissor — Live WebRTC</h1>
+  <div class="controls">
+    <span class="badge" id="roomLabel"></span>
+    <button id="toggleBtn">Iniciar câmera</button>
+    <button id="muteBtn" disabled>Mutar Áudio</button>
+    <button id="stopBtn" disabled>Parar</button>
+    <span class="badge" id="viewersCount">0 espectadores</span>
+  </div>
+  <video id="preview" autoplay playsinline muted></video>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const qs = new URLSearchParams(location.search);
+    const roomId = qs.get('room') || 'demo';
+    document.getElementById('roomLabel').textContent = `Room: ${roomId}`;
+    const socket = io();
+    const peers = new Map();
+    let localStream = null;
+    let started = false;
+    let audioMuted = false;
+    const iceConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+    const preview = document.getElementById('preview');
+    const toggleBtn = document.getElementById('toggleBtn');
+    const muteBtn = document.getElementById('muteBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const viewersCountEl = document.getElementById('viewersCount');
+
+    function updateViewersCount() {
+      viewersCountEl.textContent = `${peers.size} espectador${peers.size === 1 ? '' : 'es'}`;
+    }
+
+    async function startCamera() {
+      if (started) return;
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        preview.srcObject = localStream;
+        started = true;
+        toggleBtn.textContent = "Câmera ativa";
+        toggleBtn.disabled = true;
+        muteBtn.disabled = false;
+        stopBtn.disabled = false;
+        socket.emit("join", { roomId, role: "broadcaster" });
+      } catch (err) {
+        alert("Erro ao acessar câmera/mic: " + err.message);
+      }
+    }
+
+    function stopCamera() {
+      if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+        localStream = null;
+        started = false;
+        toggleBtn.textContent = "Iniciar câmera";
+        toggleBtn.disabled = false;
+        muteBtn.disabled = true;
+        stopBtn.disabled = true;
+      }
+      for (const [id, pc] of peers) { pc.close(); }
+      peers.clear();
+      updateViewersCount();
+    }
+
+    toggleBtn.onclick = startCamera;
+    stopBtn.onclick = stopCamera;
+
+    muteBtn.onclick = () => {
+      if (!localStream) return;
+      audioMuted = !audioMuted;
+      localStream.getAudioTracks().forEach(t => (t.enabled = !audioMuted));
+      muteBtn.textContent = audioMuted ? "Ligar Áudio" : "Mutar Áudio";
+    };
+
+    socket.on("offer", async ({ from, description }) => {
+      if (!localStream) return;
+      let pc = peers.get(from);
+      if (!pc) {
+        pc = new RTCPeerConnection(iceConfig);
+        peers.set(from, pc);
+        updateViewersCount();
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+        pc.onicecandidate = (e) => { if (e.candidate) socket.emit("candidate", { to: from, candidate: e.candidate }); };
+        pc.onconnectionstatechange = () => {
+          if (["failed","disconnected","closed"].includes(pc.connectionState)) {
+            pc.close();
+            peers.delete(from);
+            updateViewersCount();
+          }
+        };
+      }
+      await pc.setRemoteDescription(description);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      socket.emit("answer", { to: from, description: pc.localDescription });
+    });
+
+    socket.on("candidate", async ({ from, candidate }) => {
+      const pc = peers.get(from);
+      if (pc && candidate) { try { await pc.addIceCandidate(candidate); } catch {} }
+    });
+
+    if (location.protocol === "https:" || location.hostname === "localhost") { startCamera(); }
+  </script>
+</body>
+</html>

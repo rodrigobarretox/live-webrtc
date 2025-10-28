@@ -1,28 +1,135 @@
 <!doctype html>
-<html>
+<html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
   <title>Live WebRTC</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: system-ui, Arial; padding: 24px; background:#0b0f14; color:#e6edf3 }
-    a { color:#90e0ff }
-    .card { background:#111827; padding:20px; border-radius:12px; max-width:700px }
-    input, button { font-size:16px; padding:10px; border-radius:8px; border:1px solid #2a3441; background:#0f172a; color:#e6edf3 }
-    button { cursor:pointer }
+    :root {
+      --bg: #0b0f14;
+      --card: #111827;
+      --input: #0f172a;
+      --border: #2a3441;
+      --text: #e6edf3;
+      --accent: #00b7ff;
+      --accent-hover: #33c9ff;
+    }
+
+    * {
+      box-sizing: border-box;
+      transition: all 0.2s ease-in-out;
+    }
+
+    body {
+      font-family: "Inter", "Segoe UI", Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 40px 30px;
+      border-radius: 16px;
+      max-width: 480px;
+      width: 100%;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    p {
+      font-size: 1rem;
+      line-height: 1.5;
+      color: #bfc8d4;
+      margin-bottom: 20px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--input);
+      color: var(--text);
+      font-size: 1rem;
+      margin-bottom: 20px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(0, 183, 255, 0.2);
+    }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    button {
+      flex: 1 1 45%;
+      min-width: 150px;
+      padding: 12px;
+      border-radius: 10px;
+      border: none;
+      font-size: 1rem;
+      font-weight: 600;
+      background: var(--accent);
+      color: #0b0f14;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: var(--accent-hover);
+      transform: translateY(-2px);
+    }
+
+    small {
+      color: #8893a2;
+      display: block;
+      margin-top: 20px;
+    }
+
+    @media (max-width: 480px) {
+      .card {
+        padding: 28px 20px;
+      }
+      h1 {
+        font-size: 1.5rem;
+      }
+      button {
+        flex: 1 1 100%;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>Live WebRTC (HTML/JS puro)</h1>
+    <h1>🎥 Live WebRTC</h1>
     <p>Escolha um <strong>Room ID</strong> para compartilhar com quem vai assistir.</p>
-    <p>
-      <input id="room" placeholder="ex: evento123" value="demo" />
+    <input id="room" placeholder="ex: evento123" value="demo" />
+    <div class="buttons">
       <button onclick="go('broadcaster')">Abrir Transmissor</button>
       <button onclick="go('viewer')">Abrir Viewer</button>
-    </p>
-    <p><small>Dica: abra o transmissor em uma aba e o viewer em outra (ou outro dispositivo) com o mesmo Room ID.</small></p>
+    </div>
+    <small>Dica: abra o transmissor em uma aba e o viewer em outra (ou outro dispositivo) com o mesmo Room ID.</small>
   </div>
+
   <script>
     function go(kind) {
       const room = document.getElementById('room').value.trim() || 'demo';
