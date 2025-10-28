@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Live WebRTC</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, Arial; padding: 24px; background:#0b0f14; color:#e6edf3 }
+    a { color:#90e0ff }
+    .card { background:#111827; padding:20px; border-radius:12px; max-width:700px }
+    input, button { font-size:16px; padding:10px; border-radius:8px; border:1px solid #2a3441; background:#0f172a; color:#e6edf3 }
+    button { cursor:pointer }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Live WebRTC (HTML/JS puro)</h1>
+    <p>Escolha um <strong>Room ID</strong> para compartilhar com quem vai assistir.</p>
+    <p>
+      <input id="room" placeholder="ex: evento123" value="demo" />
+      <button onclick="go('broadcaster')">Abrir Transmissor</button>
+      <button onclick="go('viewer')">Abrir Viewer</button>
+    </p>
+    <p><small>Dica: abra o transmissor em uma aba e o viewer em outra (ou outro dispositivo) com o mesmo Room ID.</small></p>
+  </div>
+  <script>
+    function go(kind) {
+      const room = document.getElementById('room').value.trim() || 'demo';
+      location.href = `/${kind}.html?room=${encodeURIComponent(room)}`;
+    }
+  </script>
+</body>
+</html>
