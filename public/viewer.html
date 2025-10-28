@@ -155,7 +155,14 @@
     function ensurePC() {
       if (pc) return pc;
       pc = new RTCPeerConnection(iceConfig);
-      pc.ontrack = (e) => player.srcObject = e.streams[0];
+      pc.ontrack = (e) => {
+        player.srcObject = e.streams[0];
+        // tentativa de autoplay em dispositivos iOS
+        const tryPlay = async () => {
+          try { await player.play(); } catch (err) { console.warn("Play bloqueado:", err); }
+        };
+        tryPlay();
+      };
       pc.onicecandidate = (e) => {
         if (e.candidate && broadcasterId) {
           socket.emit("candidate", { to: broadcasterId, candidate: e.candidate });
@@ -186,6 +193,8 @@
       if (from !== broadcasterId) return;
       await ensurePC().setRemoteDescription(description);
       setStatus("Conectado! Reproduzindo…");
+      // reforço extra para iOS
+      try { await player.play(); } catch {}
     });
 
     socket.on("candidate", async ({ from, candidate }) => {
@@ -200,8 +209,24 @@
       connectBtn.disabled = false;
     });
 
-    connectBtn.onclick = () => connectToBroadcaster();
+    connectBtn.onclick = async () => {
+      await connectToBroadcaster();
+      // tentativa manual de play após clique (necessário no iPhone)
+      try { await player.play(); } catch (e) {
+        console.warn("Play manual necessário:", e);
+      }
+    };
+
     socket.emit("join", { roomId, role: "viewer" });
+
+    // Aviso visual no iPhone
+    if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      const tip = document.createElement('p');
+      tip.textContent = "📱 No iPhone, clique em 'Conectar' e depois pressione 'Play' se necessário.";
+      tip.style.color = "#ffb86b";
+      tip.style.textAlign = "center";
+      document.body.appendChild(tip);
+    }
   </script>
 </body>
 </html>

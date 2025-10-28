@@ -16,28 +16,19 @@
     --muted: #8893a2;
   }
 
-  * {
-    box-sizing: border-box;
-    transition: all 0.2s ease-in-out;
-  }
+  * { box-sizing: border-box; transition: all 0.2s ease-in-out; }
 
   body {
     font-family: "Inter", "Segoe UI", Arial, sans-serif;
-    margin: 0;
-    padding: 20px;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    margin: 0; padding: 20px;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; display: flex;
+    flex-direction: column; align-items: center;
   }
 
   h1 {
-    font-size: 1.8rem;
-    color: var(--accent);
-    margin-bottom: 20px;
-    text-align: center;
+    font-size: 1.8rem; color: var(--accent);
+    margin-bottom: 20px; text-align: center;
   }
 
   .controls {
@@ -45,13 +36,9 @@
     border: 1px solid var(--border);
     border-radius: 16px;
     padding: 20px;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-    max-width: 900px;
+    display: flex; flex-wrap: wrap;
+    justify-content: center; align-items: center;
+    gap: 12px; width: 100%; max-width: 900px;
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
     margin-bottom: 20px;
   }
@@ -68,53 +55,30 @@
   }
 
   button {
-    padding: 10px 16px;
-    border-radius: 10px;
-    border: none;
-    font-size: 1rem;
-    font-weight: 600;
-    background: var(--accent);
-    color: #0b0f14;
-    cursor: pointer;
-    transition: background 0.2s, transform 0.2s;
+    padding: 10px 16px; border-radius: 10px; border: none;
+    font-size: 1rem; font-weight: 600;
+    background: var(--accent); color: #0b0f14;
+    cursor: pointer; transition: background 0.2s, transform 0.2s;
   }
 
-  button:hover:not(:disabled) {
-    background: var(--accent-hover);
-    transform: translateY(-2px);
-  }
-
-  button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
+  button:hover:not(:disabled) { background: var(--accent-hover); transform: translateY(-2px); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
 
   video {
-    width: 100%;
-    max-width: 900px;
-    background: #000;
-    border-radius: 12px;
+    width: 100%; max-width: 900px;
+    background: #000; border-radius: 12px;
     border: 2px solid var(--border);
     box-shadow: 0 0 20px rgba(0, 183, 255, 0.1);
   }
 
   #viewersCount {
-    background: #162030;
-    color: var(--text);
-    font-weight: 500;
+    background: #162030; color: var(--text); font-weight: 500;
   }
 
   @media (max-width: 600px) {
-    .controls {
-      flex-direction: column;
-      padding: 16px;
-    }
-    h1 {
-      font-size: 1.5rem;
-    }
-    button {
-      width: 100%;
-    }
+    .controls { flex-direction: column; padding: 16px; }
+    h1 { font-size: 1.5rem; }
+    button { width: 100%; }
   }
 </style>
 </head>
@@ -127,6 +91,7 @@
     <button id="stopBtn" disabled>Parar</button>
     <span class="badge" id="viewersCount">0 espectadores</span>
   </div>
+
   <video id="preview" autoplay playsinline muted></video>
 
   <script src="/socket.io/socket.io.js"></script>
@@ -153,8 +118,10 @@
     async function startCamera() {
       if (started) return;
       try {
+        // ⚙️ iOS exige interação do usuário para iniciar a câmera
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         preview.srcObject = localStream;
+        await preview.play().catch(err => console.warn("Autoplay bloqueado:", err));
         started = true;
         toggleBtn.textContent = "Câmera ativa";
         toggleBtn.disabled = true;
@@ -181,7 +148,12 @@
       updateViewersCount();
     }
 
-    toggleBtn.onclick = startCamera;
+    toggleBtn.onclick = async () => {
+      // Executa a inicialização dentro do clique (necessário no iPhone)
+      await startCamera();
+      try { await preview.play(); } catch (e) { console.warn("Play manual necessário:", e); }
+    };
+
     stopBtn.onclick = stopCamera;
 
     muteBtn.onclick = () => {
@@ -202,9 +174,7 @@
         pc.onicecandidate = (e) => { if (e.candidate) socket.emit("candidate", { to: from, candidate: e.candidate }); };
         pc.onconnectionstatechange = () => {
           if (["failed","disconnected","closed"].includes(pc.connectionState)) {
-            pc.close();
-            peers.delete(from);
-            updateViewersCount();
+            pc.close(); peers.delete(from); updateViewersCount();
           }
         };
       }
@@ -219,7 +189,19 @@
       if (pc && candidate) { try { await pc.addIceCandidate(candidate); } catch {} }
     });
 
-    if (location.protocol === "https:" || location.hostname === "localhost") { startCamera(); }
+    // iOS bloqueia autoplay sem interação → não forçar start automático
+    if (!( /iPhone|iPad|iPod/i.test(navigator.userAgent) )) {
+      if (location.protocol === "https:" || location.hostname === "localhost") startCamera();
+    }
+
+    // Mensagem para iOS
+    if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      const tip = document.createElement('p');
+      tip.textContent = "📱 No iPhone, toque em 'Iniciar câmera' para permitir acesso.";
+      tip.style.color = "#ffb86b";
+      tip.style.textAlign = "center";
+      document.body.appendChild(tip);
+    }
   </script>
 </body>
 </html>
